@@ -10,7 +10,7 @@ API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8154600064:AAF5wHjPAnCUYII2Fp3XleRTtUMcUzr2M9g"
 CHANNEL_ID = -1002899840201
-BOT_USERNAME = "YourVideoss_bot"  # Don't include @
+BOT_USERNAME = "video12321_bot"  # ✅ তোমার বটের ইউজারনেম
 
 # --- Setup ---
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
