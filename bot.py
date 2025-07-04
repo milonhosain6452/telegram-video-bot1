@@ -10,9 +10,8 @@ API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8154600064:AAF5wHjPAnCUYII2Fp3XleRTtUMcUzr2M9g"
 CHANNEL_ID = -1002899840201
-BOT_USERNAME = "video12321_bot"  # ✅ তোমার বটের ইউজারনেম
 
-# --- Setup ---
+# 🆕 Get bot username dynamically
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 app = Flask(__name__)
 
@@ -66,24 +65,28 @@ def genlink_handler(client, message):
         link = message.command[1]
         msg_id = int(link.split("/")[-1])
         code = f"video{msg_id}"
-        
+
+        # 🆕 Get bot username dynamically
+        me = bot.get_me()
+        bot_username = me.username
+
         with sqlite3.connect("database.db") as db:
             db.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
             db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (code, msg_id))
-        
-        deep_link = f"https://t.me/{BOT_USERNAME}?start={code}"
+
+        deep_link = f"https://t.me/{bot_username}?start={code}"
         message.reply_text(f"✅ Your private video link:\n{deep_link}")
     
     except Exception as e:
         print(e)
         message.reply_text("❌ Invalid video link.")
 
-# --- Optional Flask route for UptimeRobot (Render ping) ---
+# --- Optional Flask route for UptimeRobot ---
 @app.route("/")
 def home():
     return "✅ Bot is Live"
 
-# --- Run Both Flask & Bot ---
+# --- Run Flask & Bot ---
 def run_flask():
     app.run(host="0.0.0.0", port=8080)
 
