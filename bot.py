@@ -9,7 +9,7 @@ from flask import Flask
 API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8154600064:AAF5wHjPAnCUYII2Fp3XleRTtUMcUzr2M9g"
-CHANNEL_ID = -1002899840201
+CHANNEL_ID = -1002899840201  # তোমার প্রাইভেট চ্যানেলের numeric ID
 
 # --- Setup Bot & Flask ---
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -28,7 +28,7 @@ def auto_delete(chat_id, msg_id):
     try:
         bot.delete_messages(chat_id, msg_id)
     except Exception as e:
-        print(f"[Delete Error] {e}")
+        print(f"[DELETE ERROR] {e}")
 
 # --- /start handler ---
 @bot.on_message(filters.command("start") & filters.private)
@@ -41,21 +41,20 @@ def start_handler(client, message):
         payload = message.command[1]
         if "video" in payload:
             try:
-                digits = ''.join(filter(str.isdigit, payload))
-                msg_id = int(digits)
+                msg_id = int(''.join(filter(str.isdigit, payload)))
                 with sqlite3.connect("database.db") as db:
                     db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (payload, msg_id))
-                sent = bot.send_video(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
+                sent = bot.copy_message(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
                 threading.Thread(target=auto_delete, args=(user_id, sent.id)).start()
             except Exception as e:
-                print(e)
+                print(f"[SEND ERROR] {e}")
                 message.reply_text("❌ ভিডিও আনতে সমস্যা হচ্ছে।")
         else:
             message.reply_text("👋 হ্যালো! আপনি রেজিস্টার্ড।")
     else:
         message.reply_text("👋 Send /genlink <channel video link> to get a private link.")
 
-# --- ✅ Updated /genlink handler ---
+# --- /genlink handler ---
 @bot.on_message(filters.command("genlink") & filters.private)
 def genlink_handler(client, message):
     user_id = message.from_user.id
@@ -67,7 +66,7 @@ def genlink_handler(client, message):
         msg_id = int(link.split("/")[-1])
         code = f"video{msg_id}"
 
-        # ✅ Auto-detect bot username
+        # Bot username auto-detect
         me = bot.get_me()
         bot_username = me.username
 
@@ -75,15 +74,15 @@ def genlink_handler(client, message):
             db.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
             db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (code, msg_id))
 
-        # ✅ Final deep link (for public sharing)
+        # Generate deep link
         deep_link = f"https://t.me/{bot_username}?start={code}"
         message.reply_text(f"✅ Your public shareable link:\n{deep_link}")
     
     except Exception as e:
-        print(e)
+        print(f"[GENLINK ERROR] {e}")
         message.reply_text("❌ Invalid video link.")
 
-# --- Flask route for UptimeRobot or Render ---
+# --- Flask route for uptime check ---
 @app.route("/")
 def home():
     return "✅ Bot is Live"
