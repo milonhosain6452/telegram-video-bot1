@@ -2,85 +2,88 @@ import os
 import sqlite3
 import threading
 import time
-from flask import Flask
 from pyrogram import Client, filters
+from flask import Flask
 
-# Credentials
+# --- Credentials ---
 API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8154600064:AAF5wHjPAnCUYII2Fp3XleRTtUMcUzr2M9g"
 CHANNEL_ID = -1002899840201
+BOT_USERNAME = "YourVideoss_bot"  # Don't include @
 
-# Setup Bot & Flask
+# --- Setup ---
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 app = Flask(__name__)
 
-# --- DB SETUP ---
+# --- Database ---
 def init_db():
-    conn = sqlite3.connect("database.db")
-    conn.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
-    conn.execute("CREATE TABLE IF NOT EXISTS links (code TEXT PRIMARY KEY, message_id INTEGER)")
-    conn.commit()
-    conn.close()
-
+    with sqlite3.connect("database.db") as db:
+        db.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
+        db.execute("CREATE TABLE IF NOT EXISTS links (code TEXT PRIMARY KEY, message_id INTEGER)")
 init_db()
 
-# --- AUTO DELETE FUNCTION ---
+# --- Auto Delete After 30 Minutes ---
 def auto_delete(chat_id, msg_id):
-    time.sleep(1800)  # 30 minutes
+    time.sleep(1800)
     try:
         bot.delete_messages(chat_id, msg_id)
     except Exception as e:
-        print(f"[delete error] {e}")
+        print(f"[Delete Error] {e}")
 
-# --- /start HANDLER ---
+# --- /start Handler ---
 @bot.on_message(filters.command("start") & filters.private)
-def start(client, message):
+def start_handler(client, message):
     user_id = message.from_user.id
     with sqlite3.connect("database.db") as db:
         db.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
+    
     if len(message.command) > 1:
         payload = message.command[1]
-        if payload.startswith("vid"):
+        if payload.startswith("video"):
             try:
-                message_id = int(payload[3:])
+                msg_id = int(payload.replace("video", ""))
                 with sqlite3.connect("database.db") as db:
-                    db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (payload, message_id))
-                sent = bot.send_video(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=message_id)
+                    db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (payload, msg_id))
+                sent = bot.send_video(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
                 threading.Thread(target=auto_delete, args=(user_id, sent.id)).start()
             except Exception as e:
-                print(f"[error] {e}")
-                message.reply_text("❌ Couldn't fetch the video.")
+                print(e)
+                message.reply_text("❌ ভিডিও আনতে সমস্যা হচ্ছে।")
         else:
-            message.reply_text("👋 Welcome to the bot!")
+            message.reply_text("👋 হ্যালো! আপনি রেজিস্টার্ড।")
     else:
-        message.reply_text("👋 You're registered!\nSend /genlink <channel link> to get a private link.")
+        message.reply_text("👋 Send /genlink <channel video link> to get a private link.")
 
-# --- /genlink HANDLER ---
+# --- /genlink Handler ---
 @bot.on_message(filters.command("genlink") & filters.private)
-def genlink(client, message):
+def genlink_handler(client, message):
     user_id = message.from_user.id
     if len(message.command) < 2:
-        return message.reply_text("❗ Send like this: /genlink <channel link>")
-    link = message.command[1]
+        return message.reply_text("❗ Usage: /genlink <channel post link>")
+    
     try:
-        message_id = int(link.split("/")[-1])
-        code = f"vid{message_id}"
+        link = message.command[1]
+        msg_id = int(link.split("/")[-1])
+        code = f"video{msg_id}"
+        
         with sqlite3.connect("database.db") as db:
-            db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (code, message_id))
             db.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
-        deep_link = f"https://t.me/YourVideoss_bot?start={code}"
+            db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (code, msg_id))
+        
+        deep_link = f"https://t.me/{BOT_USERNAME}?start={code}"
         message.reply_text(f"✅ Your private video link:\n{deep_link}")
+    
     except Exception as e:
-        message.reply_text("❌ Invalid link format.")
         print(e)
+        message.reply_text("❌ Invalid video link.")
 
-# --- FLASK (Optional for Render Uptime Ping) ---
+# --- Optional Flask route for UptimeRobot (Render ping) ---
 @app.route("/")
 def home():
-    return "✅ Bot is Live."
+    return "✅ Bot is Live"
 
-# --- RUN ---
+# --- Run Both Flask & Bot ---
 def run_flask():
     app.run(host="0.0.0.0", port=8080)
 
