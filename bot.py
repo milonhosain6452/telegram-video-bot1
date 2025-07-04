@@ -55,7 +55,7 @@ def start_handler(client, message):
     else:
         message.reply_text("👋 Send /genlink <channel video link> to get a private link.")
 
-# --- /genlink handler ---
+# --- ✅ Updated /genlink handler ---
 @bot.on_message(filters.command("genlink") & filters.private)
 def genlink_handler(client, message):
     user_id = message.from_user.id
@@ -67,7 +67,7 @@ def genlink_handler(client, message):
         msg_id = int(link.split("/")[-1])
         code = f"video{msg_id}"
 
-        # Get bot username dynamically
+        # ✅ Auto-detect bot username
         me = bot.get_me()
         bot_username = me.username
 
@@ -75,14 +75,15 @@ def genlink_handler(client, message):
             db.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
             db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (code, msg_id))
 
+        # ✅ Final deep link (for public sharing)
         deep_link = f"https://t.me/{bot_username}?start={code}"
-        message.reply_text(f"✅ Your private video link:\n{deep_link}")
+        message.reply_text(f"✅ Your public shareable link:\n{deep_link}")
     
     except Exception as e:
         print(e)
         message.reply_text("❌ Invalid video link.")
 
-# --- Flask route for UptimeRobot ---
+# --- Flask route for UptimeRobot or Render ---
 @app.route("/")
 def home():
     return "✅ Bot is Live"
