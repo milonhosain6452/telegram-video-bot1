@@ -11,18 +11,18 @@ API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8154600064:AAF5wHjPAnCUYII2Fp3XleRTtUMcUzr2M9g"
 CHANNEL_ID = -1002899840201
 
-# 🆕 Get bot username dynamically
+# --- Setup Bot & Flask ---
 bot = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 app = Flask(__name__)
 
-# --- Database ---
+# --- Init DB ---
 def init_db():
     with sqlite3.connect("database.db") as db:
         db.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
         db.execute("CREATE TABLE IF NOT EXISTS links (code TEXT PRIMARY KEY, message_id INTEGER)")
 init_db()
 
-# --- Auto Delete After 30 Minutes ---
+# --- Auto Delete after 30 min ---
 def auto_delete(chat_id, msg_id):
     time.sleep(1800)
     try:
@@ -30,7 +30,7 @@ def auto_delete(chat_id, msg_id):
     except Exception as e:
         print(f"[Delete Error] {e}")
 
-# --- /start Handler ---
+# --- /start handler ---
 @bot.on_message(filters.command("start") & filters.private)
 def start_handler(client, message):
     user_id = message.from_user.id
@@ -39,9 +39,10 @@ def start_handler(client, message):
     
     if len(message.command) > 1:
         payload = message.command[1]
-        if payload.startswith("video"):
+        if "video" in payload:
             try:
-                msg_id = int(payload.replace("video", ""))
+                digits = ''.join(filter(str.isdigit, payload))
+                msg_id = int(digits)
                 with sqlite3.connect("database.db") as db:
                     db.execute("INSERT OR IGNORE INTO links (code, message_id) VALUES (?, ?)", (payload, msg_id))
                 sent = bot.send_video(chat_id=user_id, from_chat_id=CHANNEL_ID, message_id=msg_id)
@@ -54,7 +55,7 @@ def start_handler(client, message):
     else:
         message.reply_text("👋 Send /genlink <channel video link> to get a private link.")
 
-# --- /genlink Handler ---
+# --- /genlink handler ---
 @bot.on_message(filters.command("genlink") & filters.private)
 def genlink_handler(client, message):
     user_id = message.from_user.id
@@ -66,7 +67,7 @@ def genlink_handler(client, message):
         msg_id = int(link.split("/")[-1])
         code = f"video{msg_id}"
 
-        # 🆕 Get bot username dynamically
+        # Get bot username dynamically
         me = bot.get_me()
         bot_username = me.username
 
@@ -81,7 +82,7 @@ def genlink_handler(client, message):
         print(e)
         message.reply_text("❌ Invalid video link.")
 
-# --- Optional Flask route for UptimeRobot ---
+# --- Flask route for UptimeRobot ---
 @app.route("/")
 def home():
     return "✅ Bot is Live"
