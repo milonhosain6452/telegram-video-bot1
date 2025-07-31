@@ -1,3 +1,4 @@
 pyrogram
 flask
+TgCrypto
 mysql-connector-python
