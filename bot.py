@@ -2,7 +2,7 @@ import os
 import json
 import string
 import random
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for
 from threading import Thread
 from pyrogram import Client, filters
 from pyrogram.types import Message
@@ -11,8 +11,8 @@ from pyrogram.types import Message
 # 🔐 Bot Configuration
 API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
-BOT_TOKEN = "7628770960:AAEIwuSGBWjFttb-9Aanm68JNnzEY3PuWlo"
-BASE_URL = "https://teraboxlink.free.nf/"  # ✅ আপনার Render URL
+BOT_TOKEN = "8022559940:AAHNNdMOfp4af6dI6rT21YP4phDSv-K8giQ"
+REDIRECT_DOMAIN = "https://teraboxlink.free.nf/redirect.html?url="  # আপনার হোস্টিং URL
 # -------------------------------
 
 # ✅ Flask App
@@ -21,17 +21,6 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     return "✅ Link shortener is running!"
-
-@app.route("/<code>")
-def redirect_page(code):
-    with open("data.json", "r") as f:
-        data = json.load(f)
-
-    if code in data["links"]:
-        long_url = data["links"][code]
-        return render_template("redirect.html", long_url=long_url)
-    else:
-        return "Invalid or expired link.", 404
 
 # ✅ JSON DB init
 if not os.path.exists("data.json"):
@@ -51,6 +40,14 @@ def save_link(code, url):
     with open("data.json", "w") as f:
         json.dump(data, f)
 
+@bot.on_message(filters.command("start") & filters.private)
+async def start_handler(_, message: Message):
+    await message.reply("""
+🌟 Welcome to URL Shortener Bot!
+Send /short <your_url> to create a short link.
+Example: /short https://example.com
+""")
+
 @bot.on_message(filters.command("short") & filters.private)
 async def short_link_handler(_, message: Message):
     if len(message.command) < 2:
@@ -59,8 +56,18 @@ async def short_link_handler(_, message: Message):
     url = message.text.split(None, 1)[1]
     code = generate_code()
     save_link(code, url)
-    short_url = f"{BASE_URL}{code}"
-    await message.reply(f"✅ Your short link:\n{short_url}")
+    
+    # Redirect through your hosting with the actual URL as parameter
+    redirect_url = f"{REDIRECT_DOMAIN}{url}"
+    short_url = f"https://teraboxlink.free.nf/{code}"  # This is just for show
+    
+    await message.reply(f"""
+✅ Your short link created!
+🔗 Short URL: {short_url}
+📌 Original URL: {url}
+
+Note: Users will see ads before redirecting.
+""")
 
 # ✅ Run Flask in a thread
 def run_flask():
