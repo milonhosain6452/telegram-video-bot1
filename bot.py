@@ -2,7 +2,8 @@ import os
 import json
 import string
 import random
-from flask import Flask, render_template, redirect, url_for
+import mysql.connector
+from flask import Flask, render_template
 from threading import Thread
 from pyrogram import Client, filters
 from pyrogram.types import Message
@@ -12,8 +13,16 @@ from pyrogram.types import Message
 API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8022559940:AAHNNdMOfp4af6dI6rT21YP4phDSv-K8giQ"
-REDIRECT_DOMAIN = "https://shortlinks.wuaze.com/redirect.html?url="  # আপনার হোস্টিং URL
+BASE_URL = "https://shortlinks.wuaze.com/"  # আপনার হোস্টিং URL
 # -------------------------------
+
+# ✅ Database Configuration
+DB_CONFIG = {
+    'host': 'sql103.infinityfree.com',
+    'user': 'if0_39544523',  # cPanel MySQL username
+    'password': 'LZMARd0bFbNbcAd',  # cPanel MySQL password
+    'database': 'if0_39544523_shortlinks_db'  # cPanel MySQL database name (যেমন: terabox_links)
+}
 
 # ✅ Flask App
 app = Flask(__name__)
@@ -22,7 +31,39 @@ app = Flask(__name__)
 def home():
     return "✅ Link shortener is running!"
 
-# ✅ JSON DB init
+# ✅ Initialize Database Connection
+def get_db_connection():
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        return connection
+    except mysql.connector.Error as err:
+        print(f"Database connection error: {err}")
+        return None
+
+# ✅ Initialize Database Table
+def init_db():
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS links (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    code VARCHAR(10) UNIQUE NOT NULL,
+                    original_url TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+            print("Database table initialized successfully")
+        except mysql.connector.Error as err:
+            print(f"Error initializing database: {err}")
+        finally:
+            if conn.is_connected():
+                cursor.close()
+                conn.close()
+
+# ✅ JSON DB backup (optional)
 if not os.path.exists("data.json"):
     with open("data.json", "w") as f:
         json.dump({"links": {}}, f)
@@ -34,6 +75,24 @@ def generate_code(length=6):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 def save_link(code, url):
+    # Save to MySQL database
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            sql = "INSERT INTO links (code, original_url) VALUES (%s, %s)"
+            val = (code, url)
+            cursor.execute(sql, val)
+            conn.commit()
+            print(f"Link saved to database: {code} => {url}")
+        except mysql.connector.Error as err:
+            print(f"Error saving to database: {err}")
+        finally:
+            if conn.is_connected():
+                cursor.close()
+                conn.close()
+    
+    # Also save to local JSON as backup
     with open("data.json", "r") as f:
         data = json.load(f)
     data["links"][code] = url
@@ -46,6 +105,8 @@ async def start_handler(_, message: Message):
 🌟 Welcome to URL Shortener Bot!
 Send /short <your_url> to create a short link.
 Example: /short https://example.com
+
+🔗 Your links will redirect through: {BASE_URL}
 """)
 
 @bot.on_message(filters.command("short") & filters.private)
@@ -54,23 +115,29 @@ async def short_link_handler(_, message: Message):
         return await message.reply("Usage: /short <URL>")
 
     url = message.text.split(None, 1)[1]
+    
+    # Validate URL format
+    if not url.startswith(('http://', 'https://')):
+        url = 'http://' + url
+    
     code = generate_code()
     save_link(code, url)
     
-    # Redirect through your hosting with the actual URL as parameter
-    redirect_url = f"{REDIRECT_DOMAIN}{url}"
-    short_url = f"https://shortlinks.wuaze.com/{code}"  # This is just for show
+    short_url = f"{BASE_URL}{code}"
     
     await message.reply(f"""
 ✅ Your short link created!
 🔗 Short URL: {short_url}
 📌 Original URL: {url}
 
-Note: Users will see ads before redirecting.
+Note: Users will see ads before redirecting to the original URL.
 """)
 
 # ✅ Run Flask in a thread
 def run_flask():
+    # Initialize database on startup
+    init_db()
+    
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
