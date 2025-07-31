@@ -12,7 +12,7 @@ from pyrogram.types import Message
 API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "8022559940:AAHNNdMOfp4af6dI6rT21YP4phDSv-K8giQ"
-REDIRECT_DOMAIN = "https://teraboxlink.free.nf/redirect.html?url="  # আপনার হোস্টিং URL
+REDIRECT_DOMAIN = "https://shortlinks.wuaze.com/redirect.html?url="  # আপনার হোস্টিং URL
 # -------------------------------
 
 # ✅ Flask App
@@ -59,7 +59,7 @@ async def short_link_handler(_, message: Message):
     
     # Redirect through your hosting with the actual URL as parameter
     redirect_url = f"{REDIRECT_DOMAIN}{url}"
-    short_url = f"https://teraboxlink.free.nf/{code}"  # This is just for show
+    short_url = f"https://shortlinks.wuaze.com/{code}"  # This is just for show
     
     await message.reply(f"""
 ✅ Your short link created!
