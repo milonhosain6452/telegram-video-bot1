@@ -12,7 +12,7 @@ from pyrogram.types import Message
 API_ID = 18088290
 API_HASH = "1b06cbb45d19188307f10bcf275341c5"
 BOT_TOKEN = "7628770960:AAEIwuSGBWjFttb-9Aanm68JNnzEY3PuWlo"
-BASE_URL = "https://telegram-video-bot1-dpby.onrender.com/"  # ✅ আপনার Render URL
+BASE_URL = "https://teraboxlink.free.nf/"  # ✅ আপনার Render URL
 # -------------------------------
 
 # ✅ Flask App
